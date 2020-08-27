@@ -23,7 +23,6 @@ def test(cfg,
          multi_label=True):
     # Initialize/load model and set device
     if model is None:
-        is_training = False
         device = torch_utils.select_device(opt.device, batch_size=batch_size)
         verbose = opt.task == 'test'
 
@@ -48,7 +47,6 @@ def test(cfg,
         if device.type != 'cpu' and torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
     else:  # called by train.py
-        is_training = True
         device = next(model.parameters()).device  # get model device
         verbose = False
 
@@ -63,7 +61,7 @@ def test(cfg,
 
     # Dataloader
     if dataloader is None:
-        dataset = LoadImagesAndLabels(path, imgsz, batch_size, rect=True, single_cls=opt.single_cls, pad=0.5)
+        dataset = LoadImagesAndLabels(path, imgsz, batch_size, rect=True, single_cls=opt.single_cls)
         batch_size = min(batch_size, len(dataset))
         dataloader = DataLoader(dataset,
                                 batch_size=batch_size,
@@ -93,7 +91,7 @@ def test(cfg,
             t0 += torch_utils.time_synchronized() - t
 
             # Compute loss
-            if is_training:  # if model has loss hyperparameters
+            if hasattr(model, 'hyp'):  # if model has loss hyperparameters
                 loss += compute_loss(train_out, targets, model)[1][:3]  # GIoU, obj, cls
 
             # Run NMS
@@ -145,8 +143,8 @@ def test(cfg,
 
                 # Per target class
                 for cls in torch.unique(tcls_tensor):
-                    ti = (cls == tcls_tensor).nonzero().view(-1)  # target indices
-                    pi = (cls == pred[:, 5]).nonzero().view(-1)  # prediction indices
+                    ti = (cls == tcls_tensor).nonzero().view(-1)  # prediction indices
+                    pi = (cls == pred[:, 5]).nonzero().view(-1)  # target indices
 
                     # Search for detections
                     if pi.shape[0]:
@@ -173,9 +171,25 @@ def test(cfg,
             plot_images(imgs, output_to_target(output, width, height), paths=paths, names=names, fname=f)  # predictions
 
     # Compute statistics
+
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats):
-        p, r, ap, f1, ap_class = ap_per_class(*stats)
+        p, r, ap, f1, ap_class, tpc, fpc, fnc, n_gt = ap_per_class(*stats)
+        tpc_txt = open('/content/tpc.txt', 'w')
+        tpc_txt.write(str(tpc[len(tpc)-1]))
+        
+        fpc_txt = open('/content/fpc.txt', 'w')
+        fpc_txt.write(str(fpc))
+        
+        fnc_txt = open('/content/fnc.txt', 'w')
+        fnc_txt.write(str(fnc))
+        
+        ngt_txt = open('/content/ngt.txt', 'w')
+        ngt_txt.write(str(n_gt))
+        
+        confusion_matrix_txt = open('/content/confusion_matrix.txt', 'w')
+        confusion_matrix_txt.write('Veri positivi: ' + str(tpc[len(tpc)-1]) + '\n' +'Falsi Positivi: ' + str(fpc[len(fpc)-1]) + '\n' + 'Falsi Negativi: ' + str(fnc[len(fnc)-1]) + '\n' + 'Olive Totali: ' + str(n_gt) )
+        print(str(type(tpc)))
         if niou > 1:
             p, r, ap, f1 = p[:, 0], r[:, 0], ap.mean(1), ap[:, 0]  # [P, R, AP@0.5:0.95, AP@0.5]
         mp, mr, map, mf1 = p.mean(), r.mean(), ap.mean(), f1.mean()
@@ -245,8 +259,8 @@ if __name__ == '__main__':
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     opt = parser.parse_args()
     opt.save_json = opt.save_json or any([x in opt.data for x in ['coco.data', 'coco2014.data', 'coco2017.data']])
-    opt.cfg = check_file(opt.cfg)  # check file
-    opt.data = check_file(opt.data)  # check file
+    opt.cfg = list(glob.iglob('./**/' + opt.cfg, recursive=True))[0]  # find file
+    opt.data = list(glob.iglob('./**/' + opt.data, recursive=True))[0]  # find file
     print(opt)
 
     # task = 'test', 'study', 'benchmark'

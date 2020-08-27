@@ -1,4 +1,4 @@
-classes=80
+classes=1
 train=data/coco64.txt
-valid=data/coco64.txt
+valid=data/cocoTest.txt
 names=data/coco.names
