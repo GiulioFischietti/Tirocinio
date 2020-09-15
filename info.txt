@@ -1,6 +1,3 @@
-In questo dataset vi sono il 50% delle immagini labeled/augmented da Valerio D'Angelo e Giulio Fischietti, e il restante 50% sono state prese da un altro collega, in particolare quelle all'interno della cartella 'Training dataset'
-Nell'algoritmo di parsing e augmentation (tutto fatto manualmente per mezzo delle OpenCV incluso nell'algoritmo stesso) viene rieffettuato il download delle immagini e a queste viene assegnato un nome del tipo '{count}'.jpg per evitare conflitti tra i diversi dataset.
-Le immagini/label nostre sono numerate da 1 a 35_r, quelle del collega da 36 in poi.
 
 Legenda sui nomi delle immagini/label
 
